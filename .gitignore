@@ -1,0 +1,28 @@
+# STM32CubeIDE generated files
+.settings/
+.metadata/
+.build/
+Debug/
+Release/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.list
+*.map
+*.srec
+*.su
+*.crf
+*.i
+
+# Backup files
+*~
+*.swp
+
+# Auto-generated IDE files
+.cproject
+.project
+
+# Core dump
+core
