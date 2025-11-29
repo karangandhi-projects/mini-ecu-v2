@@ -109,7 +109,7 @@ Logs are visible in *both app and bootloader*.
 3. Reads **B1** (active-low) to decide mode:
 
 #### ✔ Normal Mode  
-If B1 is **not** pressed:
+If B1 **is pressed** during reset:
 
 ```
 [BOOT] Jumping to application...
@@ -118,7 +118,7 @@ If B1 is **not** pressed:
 Bootloader validates the app vector table, remaps VTOR, sets MSP, and jumps.
 
 #### ✔ Bootloader Mode  
-If B1 **is pressed** during reset:
+If B1 is **not** pressed:
 
 ```
 [BOOT] B1 is pressed: staying in bootloader.
@@ -234,7 +234,7 @@ CLI tool for:
 ---
 
 # 📜 License
-MIT / Apache-2.0 (Your choice — add LICENSE file)
+MIT 
 
 ---
 
