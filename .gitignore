@@ -1,8 +1,8 @@
 # STM32CubeIDE / STM32 project ignores
 
 # Build outputs
-#Debug/
-#Release/
+Debug/
+Release/
 .build/
 *.o
 *.d
@@ -29,5 +29,4 @@
 *.tmp
 *.log
 
-# Core dumps
-core
+
