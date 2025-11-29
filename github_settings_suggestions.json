@@ -1,0 +1,16 @@
+{
+  "description": "Virtual vehicle ECU on STM32F446RE with FreeRTOS, CAN loopback telemetry, UART CLI + live dashboard, and a custom bootloader for future OTA experiments.",
+  "topics": [
+    "stm32",
+    "stm32f4",
+    "nucleo",
+    "embedded-systems",
+    "freertos",
+    "can-bus",
+    "firmware",
+    "rtos",
+    "bootloader",
+    "c-language"
+  ],
+  "default_branch": "main"
+}
