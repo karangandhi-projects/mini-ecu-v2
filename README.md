@@ -1,55 +1,243 @@
-# Mini ECU v2 – Bootloader Phase 1 & 2
+# Mini ECU v2 – STM32F446RE + FreeRTOS + Custom Bootloader
 
-## Summary
+Mini ECU v2 is a fully functional **virtual automotive ECU** implemented on the  
+**NUCLEO-F446RE** using:
 
-This PR adds a custom bootloader for the Mini ECU v2 project and wires it up
-to the existing application. The bootloader supports a clean jump to the app
-and a simple boot mode selection mechanism using the NUCLEO user button (B1).
+- **STM32 HAL**
+- **FreeRTOS**
+- **Custom Bootloader (Phase 1 & 2 complete)**
+- **CAN loopback telemetry**
+- **UART CLI with live dashboard**
+- **Virtual vehicle model + accelerator input**
+- **Unified logging system**
+- **CI workflow via GitHub Actions (ARM-GCC)**
 
-## Changes
+The project simulates a real ECU by processing virtual sensor values, displaying
+them over a CLI dashboard, and exchanging CAN messages. A custom bootloader
+chain-loads the main application and will later support OTA/FW-update protocols.
 
-- Added a **bootloader project** (`mini_ecu_boot`) intended to live in the first
-  32 KB of flash (sectors 0–1).
-- Implemented `JumpToApplication()` in the bootloader:
-  - Reads initial stack pointer and Reset_Handler from `APP_START_ADDR` (0x08008000).
-  - Validates that the stack pointer is within the SRAM range.
-  - De-initializes HAL and RCC, disables SysTick and all NVIC interrupts.
-  - Remaps the vector table to `APP_START_ADDR` via `SCB->VTOR`.
-  - Sets MSP and jumps to the application's Reset_Handler.
-- Updated the **application linker script** to:
-  - Start at `0x08008000` with 480 KB FLASH.
-  - Use `VECT_TAB_OFFSET = 0x00008000` so the vector table matches the new base.
-- Added **boot mode selection**:
-  - If B1 is pressed at reset -> stay in bootloader (future update mode).
-  - Otherwise -> attempt to jump to the application.
-- Added **basic UART2 boot logs** (115200 8N1) that show:
-  - Bootloader banner.
-  - Instructions about holding B1 to stay in bootloader.
-  - Whether the bootloader is jumping to app or staying in bootloader.
-- Updated documentation:
-  - `CHANGELOG.md` with version **0.3.0**.
-  - `docs/bootloader-plan.md` detailing bootloader phases.
-  - `docs/bootloader-usage.md` describing flash layout, boot modes, and logs.
+---
 
-## Testing
+## 📁 Repository Structure
 
-- [x] Bootloader builds successfully in STM32CubeIDE.
-- [x] Application builds successfully with FLASH origin at 0x08008000.
-- [x] Flashed bootloader to 0x08000000 and app to 0x08008000.
-- [x] On reset **without** B1 pressed:
-  - `[BOOT]` messages appear briefly.
-  - Mini ECU v2 app starts and shows CLI + dashboard.
-- [x] On reset **with** B1 pressed:
-  - Bootloader prints that it is staying in bootloader.
-  - LED (LD2) blinks in the bootloader loop; app does not start.
-- [x] When app is erased or missing:
-  - Bootloader reports no valid application and stays in error loop blinking LD2.
+```
+mini-ecu-v2/
+│
+├── app/
+│   └── mini_ecu_v2/          # FreeRTOS-based main ECU application
+│
+├── bootloader/
+│   └── mini_ecu_boot/        # Custom STM32 bootloader (Phase 1 & 2 complete)
+│
+├── docs/
+│   ├── bootloader-plan.md
+│   ├── bootloader-usage.md
+│   └── architecture.md
+│
+├── .github/
+│   └── workflows/build.yml   # CI builds bootloader + app
+│
+├── CHANGELOG.md
+└── README.md
+```
 
-## Notes
+---
 
-- This PR completes **Bootloader Phase 1 & 2**:
-  - Chainloading from bootloader to app.
-  - Boot decision via B1 + UART logs.
-- No firmware update protocol is implemented yet; that will be handled in a
-  future PR (Phase 3).
+# 🚗 **Main ECU Application Features**
 
+### ✅ **Virtual Vehicle Model**
+- Speed (km/h)
+- Engine RPM
+- Coolant temperature
+- All values computed in `vehicle.c` and updated via FreeRTOS task
+
+### ✅ **Accelerator (Throttle) Simulation**
+The NUCLEO board's **B1 button** acts as a throttle:
+- Button pressed → speed increases  
+- Button released → speed decays  
+- RPM scales with speed
+
+### ✅ **CAN Telemetry (Loopback Mode)**
+The project uses **CAN1 loopback**:
+- TX: publishes live vehicle telemetry  
+- RX: CAN frames queued and processed in a dedicated task  
+- Processed values feed the dashboard
+
+### ✅ **UART CLI + Live Dashboard**
+A terminal (115200 8N1) shows:
+- A **persistent dashboard** printed at the top
+- Below it: an interactive CLI
+
+Example:
+
+```
+-------------------- MINI ECU V2 --------------------
+Speed:  42 km/h    RPM: 2100    Coolant: 87 °C
+------------------------------------------------------
+
+> help
+```
+
+ANSI cursor control ensures the dashboard always stays pinned at the top.
+
+### ✅ **Logging Framework**
+Modules use:
+
+```
+LOG_INFO("Vehicle", "Speed updated to %d", speed);
+LOG_WARN("CAN", "Invalid DLC: %d", dlc);
+LOG_ERROR("CLI", "Unknown command: %s", cmd);
+```
+
+Logs are visible in *both app and bootloader*.
+
+---
+
+# 🥾 **Custom Bootloader (Phase 1 & 2 Complete)**
+
+### 📌 Flash Layout (STM32F446RE)
+
+| Region         | Flash Address        | Size     |
+|----------------|----------------------|----------|
+| Bootloader     | `0x0800 0000`        | 32 KB    |
+| Application    | `0x0800 8000`        | 480 KB   |
+
+### 📌 Boot Flow
+
+1. Bootloader starts at reset  
+2. Shows UART banner  
+3. Reads **B1** (active-low) to decide mode:
+
+#### ✔ Normal Mode  
+If B1 is **not** pressed:
+
+```
+[BOOT] Jumping to application...
+```
+
+Bootloader validates the app vector table, remaps VTOR, sets MSP, and jumps.
+
+#### ✔ Bootloader Mode  
+If B1 **is pressed** during reset:
+
+```
+[BOOT] B1 is pressed: staying in bootloader.
+[BOOT] (Future) OTA / firmware update mode.
+```
+
+Bootloader stays active, LED blinks.
+
+### 📌 Safety Checks
+- Validates stack pointer range (`0x2000 0000 – 0x2001 FFFF`)
+- Disables SysTick & NVIC IRQs before jumping
+- Calls `HAL_DeInit()` + `HAL_RCC_DeInit()`
+- Application linker offset handled via `VECT_TAB_OFFSET`
+
+---
+
+# 🔧 **Building the Projects**
+
+## ➤ Build using STM32CubeIDE
+Just open each project:
+- `app/mini_ecu_v2`
+- `bootloader/mini_ecu_boot`
+
+Press **Build Project**.
+
+---
+
+## ➤ Build using CI (GitHub Actions)
+The repo includes a clean, Linux-friendly Makefile for CI builds.
+
+### App:
+```
+cd app/mini_ecu_v2
+make
+```
+
+### Bootloader:
+```
+cd bootloader/mini_ecu_boot
+make
+```
+
+These CI Makefiles:
+- Compile all modules  
+- Do *not* link firmware (CubeIDE handles that)  
+- Ensure repo compiles on ARM-GCC without Windows paths  
+
+---
+
+# 🔥 **Flashing Instructions**
+
+### 1️⃣ Flash bootloader
+In CubeIDE → Run/Debug Configurations:
+- Select bootloader project
+- Flash to `0x08000000`
+
+### 2️⃣ Flash application
+Your app linker script already places it at `0x08008000`.  
+Flash normally using CubeIDE.
+
+### 3️⃣ Reset board
+- B1 pressed ➝ Bootloader mode  
+- B1 released ➝ Jump to app
+
+---
+
+# 🧪 **Continuous Integration (CI)**
+
+GitHub Actions performs:
+
+- ARM-GCC installation  
+- Build of bootloader (Linux Makefile)  
+- Build of application (Linux Makefile)  
+
+The workflow ensures:
+- Proper include paths  
+- No missing sources  
+- HAL/FreeRTOS modules compile correctly  
+
+---
+
+# 🛣️ **Roadmap**
+
+### ✔ Completed
+- FreeRTOS ECU application  
+- CAN loopback telemetry  
+- CLI + dashboard  
+- Logging framework  
+- Virtual vehicle model  
+- Bootloader (Phase 1 & 2)
+
+### 🔜 Next Phases
+
+#### **Phase 3 — UART/CAN Firmware Update Protocol**
+- Erase App region  
+- Stream FW image in chunks  
+- CRC validation  
+- Flash programming state machine  
+- Update progress logs  
+
+#### **Phase 4 — Secure Updates**
+- Firmware header structure  
+- Versioning  
+- Image signatures (HMAC or ECDSA)  
+- Revert/fallback strategy  
+
+#### **Phase 5 — Web-UI or PC Tool**
+CLI tool for:
+- Flashing firmware via UART  
+- Viewing logs  
+- Sending CAN commands  
+
+---
+
+# 📜 License
+MIT / Apache-2.0 (Your choice — add LICENSE file)
+
+---
+
+# 🙌 Credits
+Designed & developed by **Karan Gandhi**  
+Real-time embedded + firmware engineer.
