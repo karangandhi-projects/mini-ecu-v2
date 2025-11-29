@@ -1,0 +1,51 @@
+name: Bug report
+about: Create a report to help improve Mini ECU v2
+title: "[BUG] "
+labels: bug
+assignees: ''
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: "Board, STM32CubeIDE version, OS, etc."
+      placeholder: "NUCLEO-F446RE, STM32CubeIDE 1.xx, Windows 10"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: "Describe what you expected to happen and what actually happened."
+      placeholder: "When I press B1 and type 'veh speed 50', the speed does not change..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: "Step-by-step list to reproduce the issue."
+      placeholder: |
+        1. Flash firmware built from commit ...
+        2. Open serial console at 115200
+        3. Type 'help'
+        4. Press B1...
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Screenshots
+      description: "Paste any relevant UART logs, CAN logs, or screenshots."
+      render: shell
+    validations:
+      required: false
