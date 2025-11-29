@@ -19,14 +19,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi make
 
-      # Build main application (app/)
-      - name: Build Mini ECU application
+      - name: Build Mini ECU application (app/mini_ecu_v2)
         working-directory: ./app/mini_ecu_v2
         run: |
-          make -j"$(nproc)"
+          if [ -f Makefile ] || [ -f makefile ]; then
+            make -j"$(nproc)"
+          elif [ -f Debug/makefile ]; then
+            make -C Debug -j"$(nproc)"
+          else
+            echo "ERROR: No Makefile or Debug/makefile found"
+            ls -R
+            exit 1
+          fi
 
-      # Build bootloader (bootloader/)
-      - name: Build bootloader
+      - name: Build bootloader (bootloader/mini_ecu_boot)
         working-directory: ./bootloader/mini_ecu_boot
         run: |
-          make -j"$(nproc)"
+          if [ -f Makefile ] || [ -f makefile ]; then
+            make -j"$(nproc)"
+          elif [ -f Debug/makefile ]; then
+            make -C Debug -j"$(nproc)"
+          else
+            echo "ERROR: No Makefile or Debug/makefile found"
+            ls -R
+            exit 1
+          fi
