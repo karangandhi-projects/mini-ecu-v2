@@ -19,6 +19,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi make
 
-      - name: Build Mini ECU v2 (default config)
+      # Build main application (uses Makefile at app/mini_ecu_v2/Makefile)
+      - name: Build Mini ECU application
+        working-directory: ./app/mini_ecu_v2
+        run: |
+          make -j"$(nproc)"
+
+      # Build bootloader (uses Makefile at bootloader/mini_ecu_boot/Makefile)
+      - name: Build bootloader
+        working-directory: ./bootloader/mini_ecu_boot
         run: |
           make -j"$(nproc)"

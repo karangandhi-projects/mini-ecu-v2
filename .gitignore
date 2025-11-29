@@ -29,5 +29,4 @@ Release/
 *.tmp
 *.log
 
-# Core dumps
-core
+
